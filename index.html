@@ -1,0 +1,1582 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Zombie Math Defense - Edu-Action Game</title>
+    <!-- Tailwind CSS untuk Layouting Premium -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Lucu & Gamey -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome untuk Icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #0d0614;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden;
+        }
+        .font-game {
+            font-family: 'Fredoka One', cursive;
+        }
+        /* Efek Neon Glow */
+        .neon-text-green {
+            text-shadow: 0 0 10px rgba(74, 222, 128, 0.8), 0 0 20px rgba(74, 222, 128, 0.4);
+        }
+        .neon-text-purple {
+            text-shadow: 0 0 10px rgba(168, 85, 247, 0.8), 0 0 20px rgba(168, 85, 247, 0.4);
+        }
+        .neon-border-green {
+            box-shadow: 0 0 15px rgba(74, 222, 128, 0.5);
+            border-color: rgba(74, 222, 128, 0.8);
+        }
+        .neon-border-purple {
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.5);
+            border-color: rgba(168, 85, 247, 0.8);
+        }
+        /* Custom scrollbar untuk UI */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e1b4b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #a855f7;
+            border-radius: 3px;
+        }
+        /* Animasi Spin Roda */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .spinning {
+            animation: spin 3s cubic-bezier(0.1, 0.8, 0.1, 1) forwards;
+        }
+    </style>
+</head>
+<body class="w-screen h-screen flex items-center justify-center text-white relative">
+
+    <!-- CANVAS UTAMA GAMEPLAY (Diletakkan di latar belakang saat game aktif) -->
+    <div id="game-container" class="absolute inset-0 w-full h-full hidden z-10">
+        <canvas id="gameCanvas" class="w-full h-full block"></canvas>
+        
+        <!-- HUD / UI GAMEPLAY -->
+        <div class="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-none z-20">
+            <!-- Stats Kiri -->
+            <div class="bg-indigo-950/80 backdrop-blur border-2 border-green-500 rounded-2xl p-3 flex flex-col gap-1 pointer-events-auto shadow-lg max-w-[200px]">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-heart text-red-500 text-xl animate-pulse"></i>
+                    <div class="w-28 bg-gray-700 rounded-full h-4 overflow-hidden border border-gray-600">
+                        <div id="hp-bar" class="bg-red-500 h-full w-full transition-all duration-300"></div>
+                    </div>
+                    <span id="hp-text" class="font-game text-xs">100/100</span>
+                </div>
+                <div class="flex items-center justify-between text-yellow-400 font-game text-sm mt-1">
+                    <span><i class="fa-solid fa-coins mr-1"></i> <span id="game-coins">0</span></span>
+                    <span><i class="fa-solid fa-star text-purple-400 mr-1"></i> <span id="game-score">0</span></span>
+                </div>
+                <div class="text-xs text-green-400 font-semibold flex justify-between">
+                    <span>Wave: <span id="game-wave" class="font-game">1</span></span>
+                    <span>Streak: <span id="game-streak" class="font-game text-yellow-300">0</span></span>
+                </div>
+            </div>
+
+            <!-- Bagian Tengah: Soal Matematika -->
+            <div class="flex flex-col items-center pointer-events-auto max-w-sm w-full mx-2">
+                <div id="math-box" class="bg-slate-900/95 border-4 border-purple-500 neon-border-purple rounded-3xl p-4 w-full text-center shadow-2xl transition-all duration-300 transform scale-100">
+                    <p class="text-xs text-purple-400 uppercase tracking-widest font-bold mb-1" id="question-type">Aljabar Sederhana</p>
+                    <h2 id="math-question" class="text-3xl md:text-4xl font-game text-white tracking-wide select-text py-2">X + 5 = 12</h2>
+                    
+                    <!-- Timer Progress Bar -->
+                    <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden mt-2 border border-gray-700">
+                        <div id="timer-bar" class="bg-gradient-to-r from-green-500 to-red-500 h-full w-full transition-all duration-100 linear"></div>
+                    </div>
+                </div>
+
+                <!-- Input Pilihan Jawaban (Responsive Grid) -->
+                <div id="answer-grid" class="grid grid-cols-2 gap-3 w-full mt-3">
+                    <!-- Tombol jawaban akan digenerate dinamis -->
+                    <button class="answer-btn bg-purple-900/90 hover:bg-purple-800 border-2 border-purple-400 p-3 rounded-2xl font-game text-xl active:scale-95 transition-all text-white">10</button>
+                    <button class="answer-btn bg-purple-900/90 hover:bg-purple-800 border-2 border-purple-400 p-3 rounded-2xl font-game text-xl active:scale-95 transition-all text-white">7</button>
+                    <button class="answer-btn bg-purple-900/90 hover:bg-purple-800 border-2 border-purple-400 p-3 rounded-2xl font-game text-xl active:scale-95 transition-all text-white">5</button>
+                    <button class="answer-btn bg-purple-900/90 hover:bg-purple-800 border-2 border-purple-400 p-3 rounded-2xl font-game text-xl active:scale-95 transition-all text-white">12</button>
+                </div>
+            </div>
+
+            <!-- Menu Kanan Gameplay -->
+            <div class="flex flex-col gap-2 pointer-events-auto">
+                <button id="pause-btn" class="bg-slate-800/80 hover:bg-slate-700 p-3 rounded-xl border border-slate-600 active:scale-95 transition-all">
+                    <i class="fa-solid fa-pause text-lg"></i>
+                </button>
+                <div class="bg-slate-800/80 p-2 rounded-xl text-center border border-slate-600 text-[10px] uppercase font-bold">
+                    <div class="text-gray-400">Weapon</div>
+                    <div id="hud-weapon-name" class="text-yellow-400 font-game text-xs">Pistol</div>
+                    <div class="text-cyan-400 mt-1 font-mono text-[9px]" id="hud-weapon-perk">Peluru Tunggal</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Combo & Boss Alert Banner -->
+        <div id="banner-alert" class="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none hidden z-30">
+            <h1 id="banner-text" class="text-4xl md:text-6xl font-game text-red-500 tracking-wider drop-shadow-[0_4px_12px_rgba(239,68,68,0.7)] animate-bounce">
+                BOSS ALERT!
+            </h1>
+            <p id="banner-subtext" class="text-yellow-300 font-bold text-lg mt-2">Kalahkan Boss Zombie Matematika!</p>
+        </div>
+    </div>
+
+    <!-- MAIN MENU LAYER -->
+    <div id="main-menu" class="absolute inset-0 w-full h-full flex flex-col items-center justify-between p-6 bg-gradient-to-b from-[#13072e] via-[#0d0614] to-[#121c0b] overflow-y-auto z-20">
+        
+        <!-- Header / Logo -->
+        <div class="text-center mt-6">
+            <div class="relative inline-block">
+                <span class="absolute -top-6 -left-6 text-4xl animate-bounce">🧟</span>
+                <span class="absolute -bottom-2 -right-6 text-4xl animate-spin" style="animation-duration: 6s;">⚙️</span>
+                <h1 class="text-5xl md:text-7xl font-game tracking-wider neon-text-green text-green-400">
+                    ZOMBIE MATH
+                </h1>
+                <h2 class="text-3xl md:text-5xl font-game tracking-widest neon-text-purple text-purple-500 -mt-2">
+                    DEFENSE
+                </h2>
+            </div>
+            <p class="text-gray-400 text-xs md:text-sm tracking-widest mt-3 uppercase font-bold">Asah Otakmu, Hancurkan Zombie!</p>
+        </div>
+
+        <!-- Panel Utama / Karakter & Stats Singkat -->
+        <div class="my-4 max-w-md w-full bg-slate-950/80 border-2 border-purple-500/50 rounded-3xl p-4 flex flex-col items-center shadow-2xl">
+            <div class="flex items-center gap-6 w-full justify-around border-b border-purple-900/50 pb-3 mb-3">
+                <div class="text-center">
+                    <p class="text-[10px] text-gray-400 uppercase">Koin Anda</p>
+                    <p class="text-xl font-game text-yellow-400"><i class="fa-solid fa-coins mr-1"></i> <span id="menu-coins">100</span></p>
+                </div>
+                <div class="h-8 w-[1px] bg-purple-900/50"></div>
+                <div class="text-center">
+                    <p class="text-[10px] text-gray-400 uppercase">Level Rank</p>
+                    <p class="text-xl font-game text-cyan-400"><i class="fa-solid fa-award mr-1"></i> <span id="menu-rank">Novice</span></p>
+                </div>
+                <div class="h-8 w-[1px] bg-purple-900/50"></div>
+                <div class="text-center">
+                    <p class="text-[10px] text-gray-400 uppercase">High Score</p>
+                    <p class="text-xl font-game text-green-400"><i class="fa-solid fa-trophy mr-1"></i> <span id="menu-highscore">0</span></p>
+                </div>
+            </div>
+
+            <!-- Pratinjau Karakter / Maskot Senjata Aktif -->
+            <div class="relative flex flex-col items-center justify-center p-3 w-full bg-slate-900/50 rounded-2xl border border-slate-800">
+                <div class="absolute top-2 left-2 bg-purple-800 text-xs px-2 py-0.5 rounded-full font-bold text-purple-200 uppercase" id="selected-skin-badge">Default Skin</div>
+                <!-- Gambar Karakter CSS -->
+                <div class="w-24 h-24 relative flex items-center justify-center">
+                    <!-- Helm/Rambut -->
+                    <div class="absolute top-2 w-14 h-14 bg-emerald-500 rounded-full border-2 border-slate-950"></div>
+                    <!-- Mata Kacamata -->
+                    <div class="absolute top-6 flex gap-1 z-10">
+                        <div class="w-5 h-5 bg-cyan-400 border border-slate-950 rounded-full flex items-center justify-center text-[7px] font-bold text-slate-950">●</div>
+                        <div class="w-5 h-5 bg-cyan-400 border border-slate-950 rounded-full flex items-center justify-center text-[7px] font-bold text-slate-950">●</div>
+                    </div>
+                    <!-- Badan -->
+                    <div class="absolute bottom-1 w-16 h-12 bg-indigo-600 rounded-t-xl border-2 border-slate-950"></div>
+                    <!-- Senjata yang digenggam -->
+                    <div class="absolute bottom-2 right-1 w-10 h-6 bg-yellow-500 rounded border border-slate-950 transform rotate-12 flex items-center justify-center text-[8px] font-bold text-slate-950" id="menu-weapon-model">PISTOL</div>
+                </div>
+                <div class="text-center mt-1">
+                    <p class="text-sm font-bold text-white" id="menu-selected-weapon">Senjata: Pistol Standar</p>
+                    <p class="text-[10px] text-gray-400">Upgrade di Toko untuk daya hancur maksimal!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tombol Menu Utama Grid -->
+        <div class="grid grid-cols-2 gap-3 max-w-md w-full mb-4">
+            <!-- Tombol Play (Lebar Penuh) -->
+            <button id="btn-play-menu" class="col-span-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-slate-950 font-game text-2xl py-4 rounded-2xl shadow-[0_4px_20px_rgba(74,222,128,0.4)] active:scale-95 transition-all flex items-center justify-center gap-3 border-b-4 border-emerald-800">
+                <i class="fa-solid fa-play text-2xl"></i> MAIN SEKARANG
+            </button>
+            
+            <button onclick="openTab('shop')" class="bg-slate-900 hover:bg-slate-800 border-2 border-purple-500/40 p-3 rounded-2xl font-game text-sm flex items-center justify-center gap-2 active:scale-95 transition-all">
+                <i class="fa-solid fa-basket-shopping text-purple-400"></i> TOKO
+            </button>
+            <button onclick="openTab('levels')" class="bg-slate-900 hover:bg-slate-800 border-2 border-purple-500/40 p-3 rounded-2xl font-game text-sm flex items-center justify-center gap-2 active:scale-95 transition-all">
+                <i class="fa-solid fa-gamepad text-purple-400"></i> PILIH LEVEL
+            </button>
+            <button onclick="openTab('achievements')" class="bg-slate-900 hover:bg-slate-800 border-2 border-purple-500/40 p-3 rounded-2xl font-game text-sm flex items-center justify-center gap-2 active:scale-95 transition-all">
+                <i class="fa-solid fa-trophy text-yellow-400"></i> PRESTASI
+            </button>
+            <button onclick="openTab('spin')" class="bg-slate-900 hover:bg-slate-800 border-2 border-purple-500/40 p-3 rounded-2xl font-game text-sm flex items-center justify-center gap-2 active:scale-95 transition-all">
+                <i class="fa-solid fa-gift text-pink-400"></i> HARIAN SPIN
+            </button>
+        </div>
+
+        <!-- Tombol Pembantu Bawah -->
+        <div class="flex gap-4 mb-2">
+            <button onclick="openTab('tutorial')" class="text-xs text-slate-400 hover:text-white underline"><i class="fa-solid fa-circle-question mr-1"></i> Cara Bermain</button>
+            <span class="text-slate-700">|</span>
+            <button onclick="openTab('settings')" class="text-xs text-slate-400 hover:text-white underline"><i class="fa-solid fa-gear mr-1"></i> Pengaturan</button>
+        </div>
+    </div>
+
+    <!-- MODAL POPUP LAYER (UNIFIED TABS) -->
+    <div id="modal-layer" class="absolute inset-0 w-full h-full bg-slate-950/90 backdrop-blur-sm z-30 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border-2 border-purple-500 rounded-3xl max-w-md w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl relative">
+            
+            <!-- Modal Header -->
+            <div class="p-4 border-b border-purple-900/50 flex justify-between items-center bg-slate-950/60">
+                <h3 id="modal-title" class="text-xl font-game text-purple-400 flex items-center gap-2">Toko Upgrade</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-red-500 text-xl p-1 active:scale-90 transition-all">
+                    <i class="fa-solid fa-circle-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content Area (Scrollable) -->
+            <div id="modal-body" class="p-4 overflow-y-auto flex-1">
+                <!-- Konten dinamis disuntikkan di sini -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL GAME OVER -->
+    <div id="gameover-layer" class="absolute inset-0 w-full h-full bg-slate-950/95 z-40 hidden flex flex-col items-center justify-center p-6 text-center">
+        <h1 class="text-6xl font-game text-red-600 neon-text-purple tracking-widest animate-pulse">DEFEAT</h1>
+        <p class="text-gray-400 mt-2 uppercase tracking-widest font-bold">Markas Pertahanan Hancur Lebur!</p>
+
+        <!-- Zombie Face CSS Lucu -->
+        <div class="w-28 h-28 my-6 relative bg-emerald-600 border-4 border-slate-950 rounded-3xl flex flex-col items-center justify-center shadow-lg">
+            <!-- Mata zombie silang -->
+            <div class="flex gap-4 justify-around w-full px-4">
+                <div class="text-2xl font-game text-slate-950">X</div>
+                <div class="text-2xl font-game text-slate-950">X</div>
+            </div>
+            <!-- Otak menonjol -->
+            <div class="absolute -top-3 left-6 w-14 h-6 bg-pink-400 rounded-full border-2 border-slate-950"></div>
+            <!-- Mulut miring -->
+            <div class="w-12 h-3 bg-slate-950 rounded-full mt-3 rotate-12"></div>
+        </div>
+
+        <!-- Statistik Akhir -->
+        <div class="bg-slate-900 border-2 border-red-500/50 rounded-3xl p-5 max-w-xs w-full mb-6">
+            <h3 class="font-game text-lg text-yellow-400 mb-3"><i class="fa-solid fa-chart-bar mr-2"></i>STATISTIK BERMAIN</h3>
+            <div class="flex flex-col gap-2 text-sm text-gray-300">
+                <div class="flex justify-between border-b border-slate-800 pb-1">
+                    <span>Skor Akhir:</span>
+                    <span id="go-score" class="font-bold text-white">0</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-800 pb-1">
+                    <span>Wave Tertinggi:</span>
+                    <span id="go-wave" class="font-bold text-white">1</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-800 pb-1">
+                    <span>Zombie Dikalahkan:</span>
+                    <span id="go-kills" class="font-bold text-white">0</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Akurasi Jawaban:</span>
+                    <span id="go-accuracy" class="font-bold text-green-400">100%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-3 w-full max-w-xs">
+            <button id="btn-restart" class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-slate-950 font-game text-xl py-3 rounded-2xl active:scale-95 transition-all shadow-lg">
+                <i class="fa-solid fa-arrows-rotate mr-2"></i> COBA LAGI
+            </button>
+            <button onclick="goToMenu()" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 font-game py-3 rounded-2xl active:scale-95 transition-all text-sm">
+                <i class="fa-solid fa-house mr-2"></i> KEMBALI KE MENU
+            </button>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT GAME LOGIC -->
+    <script>
+        // --- INSTANSASI UTAMA & STATE GLOBAL ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Atur ukuran canvas agar responsif
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Inisialisasi State Game di LocalStorage jika belum ada
+        const DEFAULT_STATE = {
+            coins: 100,
+            highScore: 0,
+            rank: 'Novice',
+            difficulty: 'easy', // easy, medium, hard, nightmare
+            unlockedWeapons: ['pistol'],
+            selectedWeapon: 'pistol',
+            soundEnabled: true,
+            achievements: [],
+            dailyClaimDate: '',
+            skin: 'default'
+        };
+
+        let gameState = JSON.parse(localStorage.getItem('zmd_save_state')) || DEFAULT_STATE;
+
+        function saveGame() {
+            localStorage.setItem('zmd_save_state', JSON.stringify(gameState));
+            updateMenuUI();
+        }
+
+        // --- AUDIO ENGINE (WEB AUDIO API) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playSound(type) {
+            if (!gameState.soundEnabled) return;
+            try {
+                // Resume audio context jika ditangguhkan browser
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'shoot') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.exponentialRampToValueAtTime(110, now + 0.15);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } else if (type === 'correct') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+                    osc.frequency.setValueAtTime(783.99, now + 0.2); // G5
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                } else if (type === 'wrong') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.exponentialRampToValueAtTime(80, now + 0.3);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'explosion') {
+                    // Bunyi ledakan menggunakan noise frekuensi rendah
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(100, now);
+                    osc.frequency.exponentialRampToValueAtTime(10, now + 0.5);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                    osc.start(now);
+                    osc.stop(now + 0.5);
+                } else if (type === 'laser') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(880, now);
+                    osc.frequency.exponentialRampToValueAtTime(1760, now + 0.2);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                } else if (type === 'hit') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(200, now);
+                    gain.gain.setValueAtTime(0.05, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                }
+            } catch (e) {
+                console.error("Audio error: ", e);
+            }
+        }
+
+        // --- KONFIGURASI LEVEL & SENJATA ---
+        const LEVELS = {
+            easy: { name: "Mudah", multiplier: 1, ops: ['+', '-'], time: 15 },
+            medium: { name: "Sedang", multiplier: 2, ops: ['+', '-', '*'], time: 12 },
+            hard: { name: "Sulit", multiplier: 3, ops: ['+', '-', '*', '/', 'algebra'], time: 10 },
+            nightmare: { name: "Mimpi Buruk", multiplier: 5, ops: ['*', '/', 'algebra', 'fraction', 'decimal'], time: 7 }
+        };
+
+        const WEAPONS = {
+            pistol: { name: "Pistol Standar", cost: 0, power: 25, color: "#38bdf8", perk: "Peluru Tunggal", sfx: 'shoot' },
+            shotgun: { name: "Shotgun Kembar", cost: 150, power: 45, color: "#facc15", perk: "Tembakan Menyebar", sfx: 'shoot' },
+            rocket: { name: "Peluncur Roket", cost: 350, power: 80, color: "#f87171", perk: "Ledakan Area", sfx: 'explosion' },
+            laser: { name: "Laser Penghancur", cost: 600, power: 120, color: "#a855f7", perk: "Sinar Penembus", sfx: 'laser' },
+            thunder: { name: "Kanon Petir", cost: 1000, power: 200, color: "#4ade80", perk: "Petir Berantai", sfx: 'laser' }
+        };
+
+        const ACHIEVEMENTS = [
+            { id: "math_hunter", title: "Math Hunter", desc: "Selesaikan 10 soal dengan benar", reward: 50 },
+            { id: "zombie_crusher", title: "Zombie Crusher", desc: "Kalahkan 25 zombie", reward: 75 },
+            { id: "streak_master", title: "Streak Master", desc: "Dapatkan streak jawaban sebanyak 5x berturut-turut", reward: 100 },
+            { id: "boss_slayer", title: "Boss Slayer", desc: "Kalahkan Boss Zombie pertama kali", reward: 150 }
+        ];
+
+        // --- SIKLUS ENGINE RUNTIME GAMEPLAY ---
+        let currentLevel = LEVELS[gameState.difficulty];
+        let gameActive = false;
+        let baseHealth = 100;
+        let score = 0;
+        let coinsEarned = 0;
+        let streak = 0;
+        let wave = 1;
+        let totalKills = 0;
+        let totalAnswered = 0;
+        let correctAnswers = 0;
+        
+        let zombies = [];
+        let bullets = [];
+        let particles = [];
+        let floatingTexts = [];
+        
+        let currentQuestion = null;
+        let timerLeft = 100; // Persentase sisa waktu
+        let timerInterval = null;
+        let lastTime = 0;
+        let bossSpawned = false;
+        let shakeTime = 0;
+
+        // --- SISTEM MATEMATIKA GENERATOR ---
+        function generateQuestion() {
+            const ops = LEVELS[gameState.difficulty].ops;
+            const chosenOp = ops[Math.floor(Math.random() * ops.length)];
+            let qText = "";
+            let answer = 0;
+            let category = "Aritmatika";
+
+            switch (chosenOp) {
+                case '+':
+                    {
+                        const a = Math.floor(Math.random() * 20) + 5;
+                        const b = Math.floor(Math.random() * 20) + 5;
+                        qText = `${a} + ${b}`;
+                        answer = a + b;
+                    }
+                    break;
+                case '-':
+                    {
+                        const a = Math.floor(Math.random() * 30) + 10;
+                        const b = Math.floor(Math.random() * a);
+                        qText = `${a} - ${b}`;
+                        answer = a - b;
+                    }
+                    break;
+                case '*':
+                    {
+                        const a = Math.floor(Math.random() * 10) + 2;
+                        const b = Math.floor(Math.random() * 9) + 2;
+                        qText = `${a} × ${b}`;
+                        answer = a * b;
+                        category = "Perkalian";
+                    }
+                    break;
+                case '/':
+                    {
+                        const b = Math.floor(Math.random() * 8) + 2;
+                        const answerTemp = Math.floor(Math.random() * 10) + 2;
+                        const a = b * answerTemp;
+                        qText = `${a} ÷ ${b}`;
+                        answer = answerTemp;
+                        category = "Pembagian";
+                    }
+                    break;
+                case 'algebra':
+                    {
+                        const a = Math.floor(Math.random() * 15) + 2;
+                        const ans = Math.floor(Math.random() * 10) + 2;
+                        const sum = a + ans;
+                        qText = `X + ${a} = ${sum}`;
+                        answer = ans;
+                        category = "Aljabar";
+                    }
+                    break;
+                case 'decimal':
+                    {
+                        const a = (Math.floor(Math.random() * 9) + 1) / 10;
+                        const b = (Math.floor(Math.random() * 9) + 1) / 10;
+                        qText = `${a.toFixed(1)} + ${b.toFixed(1)}`;
+                        answer = parseFloat((a + b).toFixed(1));
+                        category = "Desimal";
+                    }
+                    break;
+                case 'fraction':
+                    {
+                        // Pecahan sederhana dengan penyebut sama
+                        const denom = Math.floor(Math.random() * 4) + 2; // 2 to 5
+                        const num1 = Math.floor(Math.random() * (denom - 1)) + 1;
+                        const num2 = Math.floor(Math.random() * (denom - 1)) + 1;
+                        qText = `${num1}/${denom} + ${num2}/${denom}`;
+                        answer = parseFloat(((num1 + num2) / denom).toFixed(2));
+                        category = "Pecahan";
+                    }
+                    break;
+            }
+
+            // Generate Pilihan Jawaban
+            const choices = new Set();
+            choices.add(answer);
+            
+            while (choices.size < 4) {
+                let offset = Math.floor(Math.random() * 10) + 1;
+                if (Math.random() < 0.5) offset = -offset;
+                
+                let fakeAns = answer + offset;
+                // Cegah pecahan/desimal menghasilkan fake negative atau integer aneh
+                if (chosenOp === 'decimal') {
+                    fakeAns = parseFloat((answer + (offset / 10)).toFixed(1));
+                } else if (chosenOp === 'fraction') {
+                    fakeAns = parseFloat((answer + (offset / 5)).toFixed(2));
+                }
+                
+                if (fakeAns !== answer && (!Number.isInteger(answer) || fakeAns > 0)) {
+                    choices.add(fakeAns);
+                }
+            }
+
+            // Shuffle choices
+            const choicesArray = Array.from(choices).sort(() => Math.random() - 0.5);
+
+            currentQuestion = {
+                question: qText,
+                answer: answer,
+                choices: choicesArray,
+                category: category
+            };
+
+            // Update UI Pertanyaan
+            document.getElementById('question-type').innerText = category;
+            document.getElementById('math-question').innerText = currentQuestion.question;
+            
+            const buttons = document.querySelectorAll('.answer-btn');
+            buttons.forEach((btn, idx) => {
+                btn.innerText = currentQuestion.choices[idx];
+                // Hapus style warna jawaban sebelumnya
+                btn.className = "answer-btn bg-purple-900/90 hover:bg-purple-800 border-2 border-purple-400 p-3 rounded-2xl font-game text-xl active:scale-95 transition-all text-white shadow-md";
+            });
+
+            // Reset Timer Sesuai Tingkat Kesulitan
+            timerLeft = 100;
+            clearInterval(timerInterval);
+            
+            const maxTime = LEVELS[gameState.difficulty].time;
+            const intervalTime = 100; // update per 100ms
+            const step = (intervalTime / (maxTime * 1000)) * 100;
+
+            timerInterval = setInterval(() => {
+                if (!gameActive) return;
+                timerLeft -= step;
+                if (timerLeft <= 0) {
+                    timerLeft = 0;
+                    clearInterval(timerInterval);
+                    handleAnswer(null); // Terlalu lama menjawab dianggap salah
+                }
+                document.getElementById('timer-bar').style.width = `${timerLeft}%`;
+                // Ganti warna bar dari hijau ke merah
+                if (timerLeft > 50) {
+                    document.getElementById('timer-bar').className = "bg-green-500 h-full w-full transition-all duration-100 linear";
+                } else if (timerLeft > 25) {
+                    document.getElementById('timer-bar').className = "bg-yellow-500 h-full w-full transition-all duration-100 linear";
+                } else {
+                    document.getElementById('timer-bar').className = "bg-red-500 h-full w-full transition-all duration-100 linear";
+                }
+            }, intervalTime);
+        }
+
+        // --- PENANGANAN JAWABAN ---
+        function handleAnswer(selectedVal) {
+            totalAnswered++;
+            let isCorrect = selectedVal !== null && parseFloat(selectedVal) === parseFloat(currentQuestion.answer);
+
+            if (isCorrect) {
+                correctAnswers++;
+                streak++;
+                const comboBonus = Math.floor(streak / 5) * 5;
+                const coinsAdded = 5 + comboBonus;
+                gameState.coins += coinsAdded;
+                coinsEarned += coinsAdded;
+                score += 10 * LEVELS[gameState.difficulty].multiplier;
+
+                playSound('correct');
+                triggerWeaponFire();
+                
+                // Animasi Box Pertanyaan Hijau
+                const mBox = document.getElementById('math-box');
+                mBox.classList.remove('border-purple-500', 'neon-border-purple');
+                mBox.classList.add('border-green-500', 'neon-border-green');
+                setTimeout(() => {
+                    mBox.classList.remove('border-green-500', 'neon-border-green');
+                    mBox.classList.add('border-purple-500', 'neon-border-purple');
+                }, 400);
+
+                // Tambahkan Teks Mengambang Combo
+                if (streak >= 3) {
+                    createFloatingText(`STREAK x${streak}!`, canvas.width / 2, canvas.height / 3, '#facc15', 30);
+                }
+                
+                checkAchievements();
+            } else {
+                streak = 0;
+                playSound('wrong');
+                // Hukuman: Zombie maju lebih dekat
+                zombies.forEach(z => z.x += 40);
+                
+                // Efek kamera getar kecil
+                shakeTime = 10;
+
+                // Animasi Box Pertanyaan Merah
+                const mBox = document.getElementById('math-box');
+                mBox.classList.remove('border-purple-500', 'neon-border-purple');
+                mBox.classList.add('border-red-500');
+                setTimeout(() => {
+                    mBox.classList.remove('border-red-500');
+                    mBox.classList.add('border-purple-500', 'neon-border-purple');
+                }, 400);
+
+                // Visualisasikan Jawaban Benar pada tombol
+                const buttons = document.querySelectorAll('.answer-btn');
+                buttons.forEach(btn => {
+                    if (parseFloat(btn.innerText) === parseFloat(currentQuestion.answer)) {
+                        btn.className = "answer-btn bg-green-600 border-2 border-green-400 p-3 rounded-2xl font-game text-xl text-white shadow-md animate-pulse";
+                    } else if (selectedVal !== null && parseFloat(btn.innerText) === parseFloat(selectedVal)) {
+                        btn.className = "answer-btn bg-red-600 border-2 border-red-400 p-3 rounded-2xl font-game text-xl text-white shadow-md";
+                    }
+                });
+            }
+
+            saveGame();
+            updateHUD();
+
+            // Beri jeda 1 detik agar pemain bisa melihat jawaban benar/salah sebelum soal berganti
+            setTimeout(() => {
+                if (gameActive) generateQuestion();
+            }, 800);
+        }
+
+        // Event listener klik jawaban
+        document.querySelectorAll('.answer-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                if (timerLeft <= 0 || !gameActive) return; // Mencegah multi-click
+                // Cegah tombol diklik saat animasi jeda
+                clearInterval(timerInterval);
+                handleAnswer(e.target.innerText);
+            });
+        });
+
+        // --- LOGIK SUTRADARA GAME / KREASI ENTITAS ---
+        class Zombie {
+            constructor(isBoss = false) {
+                this.isBoss = isBoss;
+                this.width = isBoss ? 110 : 65;
+                this.height = isBoss ? 110 : 65;
+                this.x = canvas.width + 50;
+                // Spawn merata secara vertikal di area pertahanan (jalur tengah)
+                const playHeight = canvas.height - 200;
+                this.y = 150 + Math.random() * playHeight;
+                
+                // Batasi Y agar tidak menabrak HUD atas atau bawah
+                if (this.y < 120) this.y = 120;
+                if (this.y > canvas.height - 120) this.y = canvas.height - 120;
+
+                const mult = LEVELS[gameState.difficulty].multiplier;
+                this.maxHp = isBoss ? (300 * wave * mult) : (30 * wave * mult);
+                this.hp = this.maxHp;
+                
+                // Kecepatan
+                this.speed = isBoss ? 0.3 : (0.5 + Math.random() * 0.4 + (wave * 0.05));
+                this.color = isBoss ? '#c084fc' : '#4ade80';
+                this.eyeColor = '#f87171';
+                this.bob = Math.random() * 100; // Variasi gerakan melayang naik turun
+            }
+
+            update() {
+                this.x -= this.speed;
+                this.bob += 0.05;
+
+                // Batas tabrakan dengan markas (garis pertahanan di X = 150)
+                if (this.x <= 160) {
+                    // Berikan damage ke markas
+                    const damage = this.isBoss ? 40 : 15;
+                    baseHealth -= damage;
+                    playSound('explosion');
+                    createExplosion(this.x, this.y, '#f87171');
+                    
+                    if (baseHealth <= 0) {
+                        baseHealth = 0;
+                        triggerGameOver();
+                    }
+                    updateHUD();
+                    // Hapus zombie
+                    return false;
+                }
+                return this.hp > 0;
+            }
+
+            draw() {
+                ctx.save();
+                // Gerakan mengayun naik turun halus agar terlihat lucu
+                const yOffset = Math.sin(this.bob) * 5;
+                const drawY = this.y + yOffset;
+
+                // Efek bayangan zombie
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.beginPath();
+                ctx.ellipse(this.x, drawY + this.height / 2, this.width / 2.5, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Tubuh / Kepala Zombie Bulat Lucu
+                ctx.fillStyle = this.color;
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#020617';
+                
+                // Render kepala besar
+                ctx.beginPath();
+                ctx.arc(this.x, drawY, this.width / 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Otak merah jambu menyembul
+                ctx.fillStyle = '#f472b6';
+                ctx.beginPath();
+                ctx.arc(this.x - 5, drawY - this.width / 2 + 5, this.width / 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Rambut acak-acakan (3 helai garis)
+                ctx.strokeStyle = '#020617';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(this.x - 10, drawY - this.width / 2);
+                ctx.lineTo(this.x - 15, drawY - this.width / 2 - 10);
+                ctx.moveTo(this.x, drawY - this.width / 2);
+                ctx.lineTo(this.x, drawY - this.width / 2 - 12);
+                ctx.moveTo(this.x + 10, drawY - this.width / 2);
+                ctx.lineTo(this.x + 12, drawY - this.width / 2 - 8);
+                ctx.stroke();
+
+                // Mata Zombie (Besar satu / Lucu)
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(this.x - 10, drawY - 5, this.width / 8, 0, Math.PI * 2);
+                ctx.arc(this.x + 10, drawY - 5, this.width / 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Pupil merah menyala
+                ctx.fillStyle = this.eyeColor;
+                ctx.beginPath();
+                ctx.arc(this.x - 10, drawY - 5, this.width / 20, 0, Math.PI * 2);
+                ctx.arc(this.x + 12, drawY - 5, this.width / 14, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Mulut lucu (tercengang / gigi kelinci)
+                ctx.fillStyle = '#020617';
+                ctx.beginPath();
+                ctx.arc(this.x, drawY + 12, this.width / 10, 0, Math.PI, false);
+                ctx.fill();
+
+                // Gigi kelinci putih
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(this.x - 3, drawY + 12, 3, 4);
+                ctx.fillRect(this.x, drawY + 12, 3, 4);
+
+                // Tangan zombie terjulur ke kiri
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.roundRect(this.x - this.width / 2 - 10, drawY + 10, 15, 8, 4);
+                ctx.fill();
+                ctx.stroke();
+
+                // Bar HP di atas kepala zombie
+                const barWidth = this.width * 0.8;
+                const barHeight = 6;
+                const barX = this.x - barWidth / 2;
+                const barY = drawY - this.width / 2 - 20;
+
+                ctx.fillStyle = '#374151';
+                ctx.fillRect(barX, barY, barWidth, barHeight);
+
+                const hpPct = Math.max(0, this.hp / this.maxHp);
+                ctx.fillStyle = this.isBoss ? '#a855f7' : '#22c55e';
+                ctx.fillRect(barX, barY, barWidth * hpPct, barHeight);
+                ctx.strokeStyle = '#000000';
+                ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+                // Jika Boss, tambahkan tanda teks BOSS
+                if (this.isBoss) {
+                    ctx.fillStyle = '#facc15';
+                    ctx.font = 'bold 10px Fredoka One';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('MEGA BOSS', this.x, barY - 5);
+                }
+
+                ctx.restore();
+            }
+        }
+
+        class Bullet {
+            constructor(x, y, target, power, type, color) {
+                this.x = x;
+                this.y = y;
+                this.target = target;
+                this.power = power;
+                this.type = type; // normal, splash, pierce
+                this.color = color;
+                this.speed = 12;
+                this.radius = type === 'rocket' ? 12 : 6;
+            }
+
+            update() {
+                // Kejar target zombie
+                if (zombies.includes(this.target)) {
+                    const dx = this.target.x - this.x;
+                    const dy = this.target.y - this.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < 15) {
+                        this.hit();
+                        return false; // Hapus peluru
+                    }
+                    this.x += (dx / dist) * this.speed;
+                    this.y += (dy / dist) * this.speed;
+                } else {
+                    // Cari target baru jika target mati di jalan
+                    if (zombies.length > 0) {
+                        this.target = zombies[0];
+                    } else {
+                        // Terbang lurus ke kanan jika zombie habis
+                        this.x += this.speed;
+                    }
+                }
+
+                if (this.x > canvas.width) return false;
+                return true;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            hit() {
+                playSound('hit');
+                if (this.type === 'rocket') {
+                    // Ledakan area (Splash damage)
+                    createExplosion(this.x, this.y, this.color);
+                    zombies.forEach(z => {
+                        const dist = Math.sqrt((z.x - this.x) ** 2 + (z.y - this.y) ** 2);
+                        if (dist < 120) {
+                            z.hp -= this.power;
+                            createFloatingText(`-${this.power}`, z.x, z.y - 20, '#f87171', 16);
+                            if (z.hp <= 0) totalKills++;
+                        }
+                    });
+                } else if (this.type === 'thunder') {
+                    // Petir Berantai ke 3 zombie terdekat
+                    createExplosion(this.x, this.y, this.color);
+                    let hitCount = 0;
+                    zombies.slice(0, 3).forEach(z => {
+                        z.hp -= this.power;
+                        createFloatingText(`-${this.power} ⚡`, z.x, z.y - 20, '#4ade80', 20);
+                        if (z.hp <= 0) totalKills++;
+                        hitCount++;
+                    });
+                } else {
+                    // Single target
+                    this.target.hp -= this.power;
+                    createFloatingText(`-${this.power}`, this.target.x, this.target.y - 20, '#facc15', 18);
+                    createExplosion(this.x, this.y, this.color, 5);
+                    if (this.target.hp <= 0) totalKills++;
+                }
+            }
+        }
+
+        // --- SISTEM PARTIKEL EFEK ---
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.size = Math.random() * 5 + 2;
+                this.vx = (Math.random() - 0.5) * 8;
+                this.vy = (Math.random() - 0.5) * 8;
+                this.life = 1.0;
+                this.decay = Math.random() * 0.05 + 0.02;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+                return this.life > 0;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class FloatingText {
+            constructor(text, x, y, color, size = 18) {
+                this.text = text;
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.size = size;
+                this.vy = -1.5;
+                this.life = 1.0;
+            }
+
+            update() {
+                this.y += this.vy;
+                this.life -= 0.02;
+                return this.life > 0;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.font = `bold ${this.size}px Fredoka One`;
+                ctx.textAlign = 'center';
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#000000';
+                ctx.strokeText(this.text, this.x, this.y);
+                ctx.fillText(this.text, this.x, this.y);
+                ctx.restore();
+            }
+        }
+
+        function createExplosion(x, y, color, count = 15) {
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        function createFloatingText(text, x, y, color, size) {
+            floatingTexts.push(new FloatingText(text, x, y, color, size));
+        }
+
+        // --- MANAJER TEMBAKAN SENJATA ---
+        function triggerWeaponFire() {
+            if (zombies.length === 0) return;
+            
+            const weaponType = gameState.selectedWeapon;
+            const config = WEAPONS[weaponType];
+            playSound(config.sfx);
+
+            // Koordinat asal tembakan (Garis markas X=150)
+            const originX = 140;
+            const originY = canvas.height / 2;
+
+            if (weaponType === 'shotgun') {
+                // Tembak 3 peluru sekaligus menyebar ke 3 target berbeda (jika ada)
+                for (let i = 0; i < 3; i++) {
+                    const target = zombies[Math.min(i, zombies.length - 1)];
+                    bullets.push(new Bullet(originX, originY, target, config.power, 'normal', config.color));
+                }
+            } else if (weaponType === 'rocket') {
+                // Roket area lambat tapi berdaya hancur tinggi
+                const target = zombies[0];
+                bullets.push(new Bullet(originX, originY, target, config.power, 'rocket', config.color));
+            } else if (weaponType === 'thunder') {
+                // Kanon petir otomatis rantai
+                const target = zombies[0];
+                bullets.push(new Bullet(originX, originY, target, config.power, 'thunder', config.color));
+            } else {
+                // Pistol / Laser (Default Single Target Kuat)
+                const target = zombies[0];
+                bullets.push(new Bullet(originX, originY, target, config.power, 'normal', config.color));
+            }
+        }
+
+        // --- UPDATE TERPADU & RENDER LOOP ---
+        function updateAndRender(timestamp) {
+            if (!gameActive) return;
+
+            // Efek Screen Shake jika ada
+            ctx.save();
+            if (shakeTime > 0) {
+                const dx = (Math.random() - 0.5) * 15;
+                const dy = (Math.random() - 0.5) * 15;
+                ctx.translate(dx, dy);
+                shakeTime--;
+            }
+
+            // 1. Bersihkan Screen
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 2. Render Kota Zombie Background (Siluet Neon Modern)
+            ctx.fillStyle = '#0a0512';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Gambar Grid Garis Cyberpunk Horizontal
+            ctx.strokeStyle = '#1e1135';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.height; i += 40) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(canvas.width, i);
+                ctx.stroke();
+            }
+
+            // 3. Render Markas Pertahanan Player (X = 150)
+            ctx.fillStyle = '#1e1b4b';
+            ctx.fillRect(0, 0, 150, canvas.height);
+            // Batas Laser Neon Penghalang
+            ctx.strokeStyle = '#a855f7';
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(150, 0);
+            ctx.lineTo(150, canvas.height);
+            ctx.stroke();
+            // Efek Neon Glow Gerbang
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#a855f7';
+            ctx.strokeStyle = '#e9d5ff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.shadowBlur = 0; // reset shadow
+
+            // Kubah Sensor Laser Menara Pengawal
+            ctx.fillStyle = '#6b21a8';
+            ctx.beginPath();
+            ctx.arc(80, canvas.height / 2, 50, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Karakter Player di Menara Pengawal
+            ctx.fillStyle = '#10b981';
+            ctx.beginPath();
+            ctx.arc(80, canvas.height / 2 - 10, 20, 0, Math.PI * 2);
+            ctx.fill();
+            // Senjata Terarah ke Zombie
+            ctx.save();
+            ctx.translate(80, canvas.height / 2);
+            ctx.rotate(0);
+            ctx.fillStyle = WEAPONS[gameState.selectedWeapon].color;
+            ctx.fillRect(10, -5, 30, 10);
+            ctx.restore();
+
+            // Teks Label Markas
+            ctx.fillStyle = '#a855f7';
+            ctx.font = 'bold 12px Fredoka One';
+            ctx.fillText("SHIELD MATRIX", 20, 40);
+
+            // 4. Update & Draw ZOMBIES
+            zombies = zombies.filter(z => {
+                const alive = z.update();
+                if (alive) z.draw();
+                return alive;
+            });
+
+            // 5. Update & Draw BULLETS
+            bullets = bullets.filter(b => {
+                const active = b.update();
+                if (active) b.draw();
+                return active;
+            });
+
+            // 6. Update & Draw PARTICLES
+            particles = particles.filter(p => {
+                const active = p.update();
+                if (active) p.draw();
+                return active;
+            });
+
+            // 7. Update & Draw FLOATING TEXTS
+            floatingTexts = floatingTexts.filter(t => {
+                const active = t.update();
+                if (active) t.draw();
+                return active;
+            });
+
+            // 8. Sutradara Gelombang / Wave Spawner
+            directorWaveSystem();
+
+            ctx.restore();
+            requestAnimationFrame(updateAndRender);
+        }
+
+        // --- SISTEM WAVE SPANNER (SUTRADARA GELOMBANG) ---
+        let nextSpawnTime = 0;
+        
+        function directorWaveSystem() {
+            const now = Date.now();
+            if (now > nextSpawnTime) {
+                // Tentukan jumlah zombie dalam satu wave
+                const maxZombies = 3 + wave * 2;
+                const activeZombies = zombies.filter(z => !z.isBoss).length;
+
+                // Hanya spawn jika belum melebihi kuota wave dan boss belum spawn
+                if (activeZombies < maxZombies && !bossSpawned) {
+                    zombies.push(new Zombie(false));
+                    // Beri selang waktu spawn acak antar zombie
+                    nextSpawnTime = now + (3000 - Math.min(1500, wave * 200));
+                }
+            }
+
+            // Pemicu Kemunculan BOSS di setiap akhir wave (kelipatan 10 zombie dibantai)
+            if (totalKills > 0 && totalKills % 10 === 0 && !bossSpawned) {
+                bossSpawned = true;
+                triggerBossAlert();
+            }
+        }
+
+        function triggerBossAlert() {
+            shakeTime = 30;
+            playSound('explosion');
+            
+            const banner = document.getElementById('banner-alert');
+            const bText = document.getElementById('banner-text');
+            const bSub = document.getElementById('banner-subtext');
+            
+            bText.innerText = "BOSS ZOMBIE MUNCUL!";
+            bSub.innerText = "Selesaikan Soal Matematika Segera!";
+            banner.classList.remove('hidden');
+
+            setTimeout(() => {
+                banner.classList.add('hidden');
+                // Spawn Boss ke Arena
+                zombies.push(new Zombie(true));
+            }, 3000);
+        }
+
+        // Saat boss dikalahkan, reset status bossSpawned
+        // Diperiksa dalam siklus berkala
+        setInterval(() => {
+            if (!gameActive) return;
+            const hasBoss = zombies.some(z => z.isBoss);
+            if (bossSpawned && !hasBoss) {
+                // Boss mati! Naik Gelombang / Wave
+                bossSpawned = false;
+                wave++;
+                gameState.coins += 50 * wave;
+                saveGame();
+                
+                // Achievement Trigger
+                unlockAchievement('boss_slayer');
+
+                createFloatingText(`WAVE ${wave} DIMULAI!`, canvas.width / 2, canvas.height / 2, '#4ade80', 35);
+                updateHUD();
+            }
+        }, 1000);
+
+        // --- PRESTASI / ACHIEVEMENT CHECKER ---
+        function unlockAchievement(id) {
+            if (!gameState.achievements.includes(id)) {
+                gameState.achievements.push(id);
+                const ach = ACHIEVEMENTS.find(a => a.id === id);
+                if (ach) {
+                    gameState.coins += ach.reward;
+                    createFloatingText(`PRESTASI: ${ach.title}! +${ach.reward} Koin`, canvas.width / 2, canvas.height / 4, '#facc15', 22);
+                    playSound('correct');
+                }
+                saveGame();
+            }
+        }
+
+        function checkAchievements() {
+            if (correctAnswers >= 10) unlockAchievement('math_hunter');
+            if (totalKills >= 25) unlockAchievement('zombie_crusher');
+            if (streak >= 5) unlockAchievement('streak_master');
+        }
+
+        // --- SISTEM MODAL POPUP DINAMIS ---
+        function openTab(tabName) {
+            const modal = document.getElementById('modal-layer');
+            const title = document.getElementById('modal-title');
+            const body = document.getElementById('modal-body');
+            
+            modal.classList.remove('hidden');
+            body.innerHTML = ''; // Kosongkan isi
+
+            if (tabName === 'shop') {
+                title.innerHTML = `<i class="fa-solid fa-basket-shopping text-purple-400"></i> Toko Senjata`;
+                
+                let contentHtml = `<p class="text-xs text-gray-400 mb-4">Gunakan koin hasil membasmi zombie untuk membeli dan memperkuat senjata pertahananmu!</p><div class="flex flex-col gap-3">`;
+                
+                Object.keys(WEAPONS).forEach(key => {
+                    const item = WEAPONS[key];
+                    const isUnlocked = gameState.unlockedWeapons.includes(key);
+                    const isSelected = gameState.selectedWeapon === key;
+
+                    contentHtml += `
+                    <div class="bg-slate-950 border border-slate-800 p-3 rounded-2xl flex justify-between items-center">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full" style="background-color: ${item.color}"></span>
+                                <h4 class="font-game text-sm text-white">${item.name}</h4>
+                            </div>
+                            <p class="text-[10px] text-purple-400 font-bold mt-0.5">${item.perk}</p>
+                            <p class="text-xs text-gray-400">Daya Hancur: <span class="text-white font-bold">${item.power}</span></p>
+                        </div>
+                        <div>
+                    `;
+
+                    if (isSelected) {
+                        contentHtml += `<span class="bg-green-600/20 text-green-400 border border-green-500 text-xs px-3 py-1.5 rounded-xl font-bold">DIGUNAKAN</span>`;
+                    } else if (isUnlocked) {
+                        contentHtml += `<button onclick="selectWeapon('${key}')" class="bg-purple-700 hover:bg-purple-600 text-xs px-3 py-1.5 rounded-xl font-bold text-white transition-all">GUNAKAN</button>`;
+                    } else {
+                        contentHtml += `
+                        <button onclick="buyWeapon('${key}')" class="bg-yellow-500 hover:bg-yellow-400 text-slate-950 text-xs px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 transition-all">
+                            <i class="fa-solid fa-coins"></i> ${item.cost}
+                        </button>
+                        `;
+                    }
+
+                    contentHtml += `</div></div>`;
+                });
+                
+                contentHtml += `</div>`;
+                body.innerHTML = contentHtml;
+
+            } else if (tabName === 'levels') {
+                title.innerHTML = `<i class="fa-solid fa-gamepad text-purple-400"></i> Pilih Tingkat Kesulitan`;
+                
+                let contentHtml = `<div class="grid grid-cols-1 gap-3">`;
+                
+                Object.keys(LEVELS).forEach(key => {
+                    const lvl = LEVELS[key];
+                    const isSelected = gameState.difficulty === key;
+                    const borderStyle = isSelected ? 'border-green-500 bg-green-950/20' : 'border-slate-800 bg-slate-950';
+
+                    contentHtml += `
+                    <button onclick="selectDifficulty('${key}')" class="text-left border-2 ${borderStyle} p-3 rounded-2xl flex justify-between items-center active:scale-95 transition-all">
+                        <div>
+                            <h4 class="font-game text-base text-white">${lvl.name}</h4>
+                            <p class="text-xs text-gray-400">Waktu Soal: <span class="text-white font-bold">${lvl.time} Detik</span></p>
+                            <p class="text-[10px] text-purple-400 mt-1">Metode: ${lvl.ops.join(', ')}</p>
+                        </div>
+                        ${isSelected ? '<i class="fa-solid fa-circle-check text-green-400 text-xl"></i>' : ''}
+                    </button>
+                    `;
+                });
+
+                contentHtml += `</div>`;
+                body.innerHTML = contentHtml;
+
+            } else if (tabName === 'achievements') {
+                title.innerHTML = `<i class="fa-solid fa-trophy text-yellow-400"></i> Prestasi Kamu`;
+                
+                let contentHtml = `<div class="flex flex-col gap-3">`;
+                
+                ACHIEVEMENTS.forEach(ach => {
+                    const isUnlocked = gameState.achievements.includes(ach.id);
+                    const cardStyle = isUnlocked ? 'border-yellow-500/50 bg-yellow-950/10' : 'border-slate-800 bg-slate-950/50 opacity-60';
+
+                    contentHtml += `
+                    <div class="border ${cardStyle} p-3 rounded-2xl flex justify-between items-center">
+                        <div class="flex-1">
+                            <h4 class="font-game text-sm ${isUnlocked ? 'text-yellow-400' : 'text-gray-400'}">${ach.title}</h4>
+                            <p class="text-xs text-gray-300 mt-0.5">${ach.desc}</p>
+                        </div>
+                        <div class="text-right ml-2">
+                            <span class="text-xs text-yellow-400 font-bold block"><i class="fa-solid fa-coins"></i> +${ach.reward}</span>
+                            <span class="text-[9px] font-bold block ${isUnlocked ? 'text-green-400' : 'text-gray-500'}">${isUnlocked ? 'SELESAI' : 'TERKUNCI'}</span>
+                        </div>
+                    </div>
+                    `;
+                });
+
+                contentHtml += `</div>`;
+                body.innerHTML = contentHtml;
+
+            } else if (tabName === 'spin') {
+                title.innerHTML = `<i class="fa-solid fa-gift text-pink-400"></i> Spin Hadiah Harian`;
+                
+                const lastClaim = gameState.dailyClaimDate;
+                const todayStr = new Date().toDateString();
+                const alreadyClaimed = lastClaim === todayStr;
+
+                let contentHtml = `
+                <div class="flex flex-col items-center py-4">
+                    <p class="text-center text-xs text-gray-300 mb-6">Putar Roda Keberuntungan harian untuk mendapatkan bonus koin instan!</p>
+                    
+                    <!-- Roda Keberuntungan visual CSS -->
+                    <div class="w-48 h-48 rounded-full border-4 border-purple-500 relative flex items-center justify-center shadow-xl mb-6 overflow-hidden bg-slate-950" id="fortune-wheel">
+                        <!-- Segmen Visual -->
+                        <div class="absolute w-full h-[2px] bg-purple-500"></div>
+                        <div class="absolute w-[2px] h-full bg-purple-500"></div>
+                        <div class="absolute inset-4 rounded-full bg-slate-900 flex items-center justify-center border-2 border-dashed border-purple-700">
+                            <div class="text-center">
+                                <span class="font-game text-xs text-yellow-400 block">HADIAH</span>
+                                <span class="text-lg font-bold text-white" id="wheel-center-text">10 - 200</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="spin-wheel-btn" onclick="spinWheel()" ${alreadyClaimed ? 'disabled' : ''} class="w-full bg-gradient-to-r from-pink-500 to-purple-600 disabled:from-gray-700 disabled:to-gray-800 text-slate-950 disabled:text-gray-400 font-game text-lg py-3 rounded-2xl active:scale-95 transition-all shadow-lg">
+                        ${alreadyClaimed ? 'Selesai untuk Hari Ini' : 'PUTAR RODA SEKARANG'}
+                    </button>
+                    ${alreadyClaimed ? '<p class="text-[10px] text-green-400 font-semibold mt-2">Silakan kembali lagi besok!</p>' : ''}
+                </div>
+                `;
+                body.innerHTML = contentHtml;
+
+            } else if (tabName === 'tutorial') {
+                title.innerHTML = `<i class="fa-solid fa-circle-question text-purple-400"></i> Panduan Bermain`;
+                
+                body.innerHTML = `
+                <div class="flex flex-col gap-3 text-sm text-gray-300">
+                    <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800">
+                        <h4 class="font-game text-purple-400 text-xs mb-1">🧟 1. GELOMBANG ZOMBIE</h4>
+                        <p class="text-xs">Zombie-zombie lucu akan muncul dari kanan layar berjalan menuju markasmu di kiri. Jaga agar mereka tidak melewati pertahanan laser!</p>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800">
+                        <h4 class="font-game text-green-400 text-xs mb-1">➕ 2. JAWAB SOAL CEPAT</h4>
+                        <p class="text-xs">Pilihlah satu jawaban yang benar dari empat opsi pilihan ganda secepat mungkin sebelum waktu habis.</p>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800">
+                        <h4 class="font-game text-yellow-400 text-xs mb-1">🔫 3. TEMBAK & UPGRADE</h4>
+                        <p class="text-xs">Setiap jawaban benar akan menembakkan senjatamu. Jika salah, zombie akan melesat maju lebih dekat!</p>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800">
+                        <h4 class="font-game text-red-400 text-xs mb-1">👑 4. PERTEMPURAN BOSS</h4>
+                        <p class="text-xs">Hati-hati! Setiap 10 zombie dibantai, Mega Boss dengan HP tebal akan muncul. Selesaikan serangkaian soal dengan cepat untuk melumpuhkannya!</p>
+                    </div>
+                </div>
+                `;
+
+            } else if (tabName === 'settings') {
+                title.innerHTML = `<i class="fa-solid fa-gear text-purple-400"></i> Pengaturan Game`;
+                
+                body.innerHTML = `
+                <div class="flex flex-col gap-4">
+                    <div class="flex justify-between items-center bg-slate-950 p-3 rounded-2xl border border-slate-800">
+                        <div>
+                            <h4 class="font-game text-sm">Suara & Efek SFX</h4>
+                            <p class="text-xs text-gray-400">Mainkan nada tembakan & jawaban</p>
+                        </div>
+                        <button onclick="toggleSound()" class="px-4 py-2 rounded-xl font-game text-xs ${gameState.soundEnabled ? 'bg-green-600 text-white' : 'bg-red-900 text-red-200'}">
+                            ${gameState.soundEnabled ? 'ON' : 'OFF'}
+                        </button>
+                    </div>
+                    <div class="flex justify-between items-center bg-slate-950 p-3 rounded-2xl border border-slate-800">
+                        <div>
+                            <h4 class="font-game text-sm">Hapus Data</h4>
+                            <p class="text-xs text-gray-400">Atur ulang semua koin dan level ke awal</p>
+                        </div>
+                        <button onclick="resetData()" class="bg-red-600 hover:bg-red-500 text-xs font-bold px-3 py-2 rounded-xl text-white transition-all">RESET</button>
+                    </div>
+                </div>
+                `;
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('modal-layer').classList.add('hidden');
+        }
+
+        // --- FUNGSI TOKO & SETTING ---
+        function selectWeapon(key) {
+            gameState.selectedWeapon = key;
+            saveGame();
+            closeModal();
+            updateMenuUI();
+        }
+
+        function buyWeapon(key) {
+            const item = WEAPONS[key];
+            if (gameState.coins >= item.cost) {
+                gameState.coins -= item.cost;
+                gameState.unlockedWeapons.push(key);
+                gameState.selectedWeapon = key;
+                saveGame();
+                playSound('correct');
+                openTab('shop'); // Refresh UI
+            } else {
+                playSound('wrong');
+                createFloatingText("Koin Tidak Cukup!", canvas.width / 2, canvas.height / 2, '#ef4444', 25);
+            }
+        }
+
+        function selectDifficulty(key) {
+            gameState.difficulty = key;
+            currentLevel = LEVELS[key];
+            saveGame();
+            closeModal();
+        }
+
+        function toggleSound() {
+            gameState.soundEnabled = !gameState.soundEnabled;
+            saveGame();
+            openTab('settings'); // Refresh UI
+        }
+
+        function resetData() {
+            if (confirm("Apakah Anda yakin ingin mengatur ulang data permainan? Semua koin dan senjata akan hilang.")) {
+                gameState = DEFAULT_STATE;
+                saveGame();
+                closeModal();
+            }
+        }
+
+        function spinWheel() {
+            const btn = document.getElementById('spin-wheel-btn');
+            const wheel = document.getElementById('fortune-wheel');
+            const centerText = document.getElementById('wheel-center-text');
+            
+            btn.disabled = true;
+            wheel.classList.add('spinning');
+            
+            const rewards = [20, 50, 100, 200, 30, 40, 15, 80];
+            const randomIndex = Math.floor(Math.random() * rewards.length);
+            const prize = rewards[randomIndex];
+
+            setTimeout(() => {
+                wheel.classList.remove('spinning');
+                centerText.innerText = `+${prize} 🪙`;
+                gameState.coins += prize;
+                gameState.dailyClaimDate = new Date().toDateString();
+                saveGame();
+                playSound('correct');
+            }, 3000);
+        }
+
+        // --- PENANGANAN ALUR UTAMA GAMEPLAY ---
+        document.getElementById('btn-play-menu').addEventListener('click', () => {
+            startGame();
+        });
+
+        document.getElementById('pause-btn').addEventListener('click', () => {
+            gameActive = false;
+            clearInterval(timerInterval);
+            openTab('tutorial');
+            document.getElementById('modal-title').innerText = "Game Dijeda";
+            // Ganti tombol tutup agar melanjutkan permainan
+            const closeBtn = document.querySelector('#modal-layer button');
+            closeBtn.setAttribute('onclick', 'resumeGame()');
+        });
+
+        function resumeGame() {
+            gameActive = true;
+            closeModal();
+            // Kembalikan fungsi tombol tutup semula
+            const closeBtn = document.querySelector('#modal-layer button');
+            closeBtn.setAttribute('onclick', 'closeModal()');
+            generateQuestion();
+            requestAnimationFrame(updateAndRender);
+        }
+
+        function startGame() {
+            // Sembunyikan Menu, Tampilkan Canvas & Gameplay UI
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('game-container').classList.remove('hidden');
+
+            // Reset Level Run-State
+            baseHealth = 100;
+            score = 0;
+            coinsEarned = 0;
+            streak = 0;
+            wave = 1;
+            totalKills = 0;
+            totalAnswered = 0;
+            correctAnswers = 0;
+            zombies = [];
+            bullets = [];
+            particles = [];
+            floatingTexts = [];
+            bossSpawned = false;
+            gameActive = true;
+
+            updateHUD();
+            generateQuestion();
+            
+            // Masuk ke Siklus Animasi Utama
+            requestAnimationFrame(updateAndRender);
+            playSound('correct');
+        }
+
+        function triggerGameOver() {
+            gameActive = false;
+            clearInterval(timerInterval);
+            
+            // Catat Highscore jika melampaui
+            if (score > gameState.highScore) {
+                gameState.highScore = score;
+            }
+
+            // Hitung Akurasi
+            const accuracy = totalAnswered > 0 ? Math.round((correctAnswers / totalAnswered) * 100) : 100;
+
+            // Evaluasi Rank Baru Berdasarkan High Score
+            if (gameState.highScore > 500) gameState.rank = "Elite Defender";
+            else if (gameState.highScore > 200) gameState.rank = "Intermediate";
+            else gameState.rank = "Novice";
+
+            saveGame();
+
+            // Sembunyikan Gameplay UI, Tampilkan Layar Game Over
+            document.getElementById('game-container').classList.add('hidden');
+            document.getElementById('gameover-layer').classList.remove('hidden');
+
+            // Isi Statistik Akhir
+            document.getElementById('go-score').innerText = score;
+            document.getElementById('go-wave').innerText = wave;
+            document.getElementById('go-kills').innerText = totalKills;
+            document.getElementById('go-accuracy').innerText = `${accuracy}%`;
+        }
+
+        document.getElementById('btn-restart').addEventListener('click', () => {
+            document.getElementById('gameover-layer').classList.add('hidden');
+            startGame();
+        });
+
+        function goToMenu() {
+            document.getElementById('gameover-layer').classList.add('hidden');
+            document.getElementById('game-container').classList.add('hidden');
+            document.getElementById('main-menu').classList.remove('hidden');
+            updateMenuUI();
+        }
+
+        // --- PEMBARUAN TAMPILAN (UI BINDINGS) ---
+        function updateMenuUI() {
+            document.getElementById('menu-coins').innerText = gameState.coins;
+            document.getElementById('menu-rank').innerText = gameState.rank;
+            document.getElementById('menu-highscore').innerText = gameState.highScore;
+            
+            const activeWep = WEAPONS[gameState.selectedWeapon];
+            document.getElementById('menu-selected-weapon').innerText = `Senjata: ${activeWep.name}`;
+            document.getElementById('menu-weapon-model').innerText = gameState.selectedWeapon.toUpperCase();
+            document.getElementById('menu-weapon-model').style.backgroundColor = activeWep.color;
+        }
+
+        function updateHUD() {
+            document.getElementById('hp-bar').style.width = `${baseHealth}%`;
+            document.getElementById('hp-text').innerText = `${baseHealth}/100`;
+            document.getElementById('game-coins').innerText = gameState.coins;
+            document.getElementById('game-score').innerText = score;
+            document.getElementById('game-wave').innerText = wave;
+            document.getElementById('game-streak').innerText = streak;
+
+            const activeWep = WEAPONS[gameState.selectedWeapon];
+            document.getElementById('hud-weapon-name').innerText = activeWep.name;
+            document.getElementById('hud-weapon-name').style.color = activeWep.color;
+            document.getElementById('hud-weapon-perk').innerText = activeWep.perk;
+        }
+
+        // Inisialisasi awal UI saat memuat halaman
+        updateMenuUI();
+    </script>
+</body>
+</html>
